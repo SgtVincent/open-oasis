@@ -20,6 +20,11 @@ pip install torch torchvision --index-url https://download.pytorch.org/whl/cu121
 pip install einops diffusers timm av
 ```
 
+### Install this repository as a python package
+```
+pip install -e .
+```
+
 ## Download the model weights
 Inside the `open-oasis/` directory, run:
 ```
