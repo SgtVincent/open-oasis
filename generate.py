@@ -183,7 +183,7 @@ if __name__ == "__main__":
         "--output-path",
         type=str,
         help="Path where generated video should be saved.",
-        default="video.mp4",
+        default="outputs/video.mp4",
     )
     parse.add_argument(
         "--fps",

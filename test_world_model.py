@@ -33,35 +33,6 @@ assert (
 
 # Input action/actions
 actions_dict_list = torch.load("sample_data/Player729-f153ac423f61-20210806-224813.chunk_000.actions.pt")
-# actions_dict_list = [
-#     {
-#         "ESC": 0,
-#         "back": 0,
-#         "drop": 0,
-#         "forward": 1,
-#         "hotbar.1": 0,
-#         "hotbar.2": 0,
-#         "hotbar.3": 1,
-#         "hotbar.4": 0,
-#         "hotbar.5": 0,
-#         "hotbar.6": 0,
-#         "hotbar.7": 0,
-#         "hotbar.8": 0,
-#         "hotbar.9": 0,
-#         "inventory": 0,
-#         "jump": 1,
-#         "left": 0,
-#         "right": 0,
-#         "sneak": 0,
-#         "sprint": 0,
-#         "swapHands": 0,
-#         "camera": torch.tensor([40, 40]),
-#         "attack": 0,
-#         "use": 0,
-#         "pickItem": 0,
-#     }
-# ] * 10
-
 
 # Initialize the WorldModel
 wm = WorldModel(
@@ -73,13 +44,73 @@ wm = WorldModel(
     fps=20,
 )
 
-# Generate video
-if not os.path.exists("outputs"):
-    os.makedirs("outputs", exist_ok=True)
-video_frames = wm.run(prompt, actions_dict_list, output_path="outputs/test_video.mp4")
+# # Generate video
+# if not os.path.exists("outputs"):
+#     os.makedirs("outputs", exist_ok=True)
+# video_frames = wm.run_diffusion(prompt, actions_dict_list, output_path="outputs/test_video.mp4")
 
-# save numpy video frames to png
-if not os.path.exists("outputs/test_video_frames"):
-    os.makedirs("outputs/test_video_frames", exist_ok=True)
-for i, frame in enumerate(video_frames):
-    Image.fromarray(frame).save(f"outputs/test_video_frames/frame_{i}.png")
+# # save numpy video frames to png
+# if not os.path.exists("outputs/test_video_frames"):
+#     os.makedirs("outputs/test_video_frames", exist_ok=True)
+# for i, frame in enumerate(video_frames):
+#     Image.fromarray(frame).save(f"outputs/test_video_frames/frame_{i}.png")
+
+# Test single step action
+# Full action space, but you only need to provide non-zero actions
+# action_dict = {
+#     "ESC": 0,
+#     "back": 0,
+#     "drop": 0,
+#     "forward": 0,
+#     "hotbar.1": 0,
+#     "hotbar.2": 0,
+#     "hotbar.3": 1,
+#     "hotbar.4": 0,
+#     "hotbar.5": 0,
+#     "hotbar.6": 0,
+#     "hotbar.7": 0,
+#     "hotbar.8": 0,
+#     "hotbar.9": 0,
+#     "inventory": 0,
+#     "jump": 0,
+#     "left": 1,
+#     "right": 0,
+#     "sneak": 0,
+#     "sprint": 0,
+#     "swapHands": 0,
+#     "camera": torch.tensor([40, 40]),
+#     "attack": 0,
+#     "use": 0,
+#     "pickItem": 0,
+# }
+forwrd_left_action = {
+    "forward": 1,
+    "left": 1,
+    # currently, each action MUST include camera key
+    "camera": torch.tensor([40, 40]),
+}
+
+forward_right_action = {
+    "forward": 1,
+    "right": 1,
+    # currently, each action MUST include camera key
+    "camera": torch.tensor([40, 40]),
+}
+
+frame = wm.step_single_action(
+    prompt, forwrd_left_action, action_repeats=8, output_path="outputs/test_single_action_video.mp4"
+)
+
+# save numpy frame to png
+Image.fromarray(frame).save("outputs/test_single_action_frame.png")
+
+
+# Test multiple step actions
+actions_dict_list = [forwrd_left_action, forward_right_action] * 5
+frames = wm.step_actions(prompt, actions_dict_list, action_repeats=8)
+
+# save numpy frames to png
+if not os.path.exists("outputs/test_multi_actions_frames"):
+    os.makedirs("outputs/test_multi_actions_frames", exist_ok=True)
+for i, frame in enumerate(frames):
+    Image.fromarray(frame).save(f"outputs/test_multi_actions_frames/frame_{i}.png")

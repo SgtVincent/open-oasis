@@ -112,7 +112,7 @@ class WorldModel:
 
         return x, actions
 
-    def vae_encoding(self, x, actions):
+    def _vae_encoding(self, x, actions):
         """
         Encode the prompt using the VAE.
 
@@ -152,19 +152,22 @@ class WorldModel:
 
         return x_encoded, actions
 
-    def diffusion(self, x_encoded, actions):
+    def _diffusion(self, x_encoded, actions, num_frames=None):
         """
         Perform the diffusion process to generate frames.
 
         Args:
             x_encoded (torch.Tensor): Encoded prompt tensor of shape (B, T, C, H, W).
             actions (torch.Tensor): One-hot encoded actions tensor of shape (1, T, D).
+            num_frames (int, optional): Number of frames to generate. Defaults to None. Used for ad-hoc frame length adjustment.
 
         Returns:
             x_encoded (torch.Tensor): Encoded prompt tensor with generated frames of shape (B, num_frames, C, H, W).
         """
         B = x_encoded.shape[0]
         frames_list = [x_encoded]
+        if not num_frames:
+            num_frames = self.num_frames
 
         # Initialize alphas and betas for noise scheduling
         betas = sigmoid_beta_schedule(self.max_noise_level).float().to(self.device)
@@ -172,7 +175,7 @@ class WorldModel:
         alphas_cumprod = torch.cumprod(alphas, dim=0).to(self.device)  # Shape: (T,)
         alphas_cumprod = rearrange(alphas_cumprod, "T -> T 1 1 1")
 
-        for i in tqdm(range(self.n_prompt_frames, self.num_frames), desc="Generating frames"):
+        for i in tqdm(range(self.n_prompt_frames, num_frames), desc="Generating frames"):
             # Add random noise to the current frame
             chunk = torch.randn((B, 1, *x_encoded.shape[-3:]), device=self.device)
             chunk = torch.clamp(chunk, -self.noise_abs_max, +self.noise_abs_max)
@@ -220,51 +223,60 @@ class WorldModel:
 
         return x_encoded
 
-    def vae_decoding(self, x_encoded):
+    def _vae_decoding(self, x_encoded, num_frames=None):
         """
         Decode the encoded frames using the VAE.
 
         Args:
             x_encoded (torch.Tensor): Encoded prompt tensor with generated frames of shape (B, num_frames, C, H, W).
+            num_frames (int, optional): Number of frames to decode. Defaults to None. Used for ad-hoc frame length adjustment.
 
         Returns:
             torch.Tensor: Decoded frames as RGB numpy arrays.
         """
+        if not num_frames:
+            num_frames = self.num_frames
+
         x = rearrange(x_encoded, "b t c h w -> (b t) (h w) c")
         with torch.no_grad():
             x = (self.vae.decode(x / self.scaling_factor) + 1) / 2
-        x = rearrange(x, "(b t) c h w -> b t h w c", t=self.num_frames)
+        x = rearrange(x, "(b t) c h w -> b t h w c", t=num_frames)
 
         return x
 
-    def run(
+    def run_diffusion(
         self,
         prompt_tensor,
         actions_dict_list,
         output_path="output.mp4",
+        num_frames=None,
     ):
         """
-        Run the full pipeline to generate a video from the prompt and actions.
+        Run the diffusion model to generate a video from the prompt and actions.
 
         Args:
             prompt_tensor (torch.Tensor): Prompt tensor of shape (1, C, H, W).
             actions_dict_list (list of dict): List of action dictionaries for each frame.
             output_path (str, optional): Path where generated video will be saved. Defaults to "output.mp4".
+            num_frames (int, optional): Number of frames to generate. Defaults to None. Used for ad-hoc frame length adjustment.
 
         Returns:
-            list: List of generated frames as RGB numpy arrays.
+            list: List of generated frames as RGB numpy arrays, each of shape (H, W, C).
         """
+        if not num_frames:
+            num_frames = self.num_frames
+
         # Preprocess input prompt and actions
         x, actions = self.preprocess_input(prompt_tensor, actions_dict_list)
 
         # VAE Encoding
-        x_encoded, actions = self.vae_encoding(x, actions)
+        x_encoded, actions = self._vae_encoding(x, actions)
 
         # Diffusion
-        frames_list = self.diffusion(x_encoded, actions)
+        frames_list = self._diffusion(x_encoded, actions, num_frames=num_frames)
 
         # VAE Decoding
-        x = self.vae_decoding(frames_list)
+        x = self._vae_decoding(frames_list, num_frames=num_frames)
 
         # Save video
         x = torch.clamp(x, 0, 1)
@@ -277,3 +289,54 @@ class WorldModel:
         frames_np = x[0].cpu().numpy()
 
         return frames_np
+
+    def step_single_action(
+        self,
+        prompt_tensor,
+        action_dict,
+        action_repeats=8,
+        diffusion_frames=8,
+        output_path=None,
+    ):
+        """
+        Step the world model with a single action.
+
+        Args:
+            prompt_tensor (torch.Tensor): Prompt tensor of shape (1, C, H, W).
+            action_dict (dict): Action dictionary for the frame.
+            diffusion_frames (int, optional): Number of frames to generate. Defaults to 8.
+
+        Returns:
+            torch.Tensor: Generated frame as an RGB numpy array, of shape (H, W, C).
+        """
+        assert action_repeats <= diffusion_frames, "Too many action repeats for the diffusion model."
+
+        # call run diffusion
+        frames = self.run_diffusion(prompt_tensor, [action_dict], output_path=output_path, num_frames=diffusion_frames)
+
+        return frames[-1]
+
+    def step_actions(self, prompt_tensor, actions_dict_list, action_repeats=8, diffusion_frames=8, output_path=None):
+        """
+        Step the world model with a single action.
+
+        Args:
+            prompt_tensor (torch.Tensor): Prompt tensor of shape (1, C, H, W).
+            actions_dict_list (list of dict): List of action dictionaries for each frame.
+            action_repeats (int, optional): Number of times to repeat the action. Defaults to 8.
+            diffusion_frames (int, optional): Number of frames to generate. Defaults to 8. It should be a multiple of action_repeats.
+
+        Returns:
+            torch.Tensor: Generated frames of the video as RGB numpy arrays, each of shape (H, W, C).
+        """
+
+        action_images = []
+        for i, action_dict in enumerate(actions_dict_list):
+            # Step the world model with a single action
+            frame = self.step_single_action(prompt_tensor, action_dict, action_repeats, diffusion_frames, output_path)
+            action_images.append(frame)
+
+            # Update prompt tensor with the generated frame
+            prompt_tensor = torch.tensor(frame).unsqueeze(0).permute(0, 3, 1, 2)
+
+        return action_images

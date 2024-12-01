@@ -61,6 +61,7 @@ def one_hot_actions(actions: Sequence[Mapping[str, int]]) -> torch.Tensor:
     actions_one_hot = torch.zeros(len(actions), len(ACTION_KEYS))
     for i, current_actions in enumerate(actions):
         for j, action_key in enumerate(ACTION_KEYS):
+            # TODO: should we keep a buffer to store the previous camera angle?
             if action_key.startswith("camera"):
                 if action_key == "cameraX":
                     value = current_actions["camera"][0]
@@ -74,8 +75,11 @@ def one_hot_actions(actions: Sequence[Mapping[str, int]]) -> torch.Tensor:
                 value = (value - num_buckets) / num_buckets
                 assert -1 - 1e-3 <= value <= 1 + 1e-3, f"Camera action value must be in [-1, 1], got {value}"
             else:
-                value = current_actions[action_key]
-                assert 0 <= value <= 1, f"Action value must be in [0, 1] got {value}"
+                if action_key in current_actions:
+                    value = current_actions[action_key]
+                    assert 0 <= value <= 1, f"Action value must be in [0, 1] got {value}"
+                else:
+                    value = 0
             actions_one_hot[i, j] = value
 
     return actions_one_hot
