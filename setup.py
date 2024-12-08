@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="open_oasis",
+    name="open-oasis",
     version="0.1.0",
     author="Your Name",
     author_email="your.email@example.com",
@@ -9,10 +9,10 @@ setup(
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     url="https://github.com/SgtVincent/open-oasis",
-    packages=find_packages(),
+    packages=find_packages(include=["open_oasis", "open_oasis.*"]),
     install_requires=[
-        "torch",
-        "torchvision",
+        # "torch",
+        # "torchvision",
         "safetensors",
         "einops",
         "tqdm",
