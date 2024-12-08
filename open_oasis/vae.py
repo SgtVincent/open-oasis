@@ -14,8 +14,9 @@ import torch.nn.functional as F
 from einops import rearrange
 from timm.models.vision_transformer import Mlp
 from timm.layers.helpers import to_2tuple
-from rotary_embedding_torch import RotaryEmbedding, apply_rotary_emb
-from dit import PatchEmbed
+
+from .rotary_embedding_torch import RotaryEmbedding, apply_rotary_emb
+from .dit import PatchEmbed
 
 
 class DiagonalGaussianDistribution(object):
@@ -253,7 +254,9 @@ class AutoencoderKL(nn.Module):
             self.patch_size,
             self.seq_w,
             self.patch_size,
-        ).permute([0, 1, 3, 5, 2, 4])  # [b, c, h, p, w, p] --> [b, c, p, p, h, w]
+        ).permute(
+            [0, 1, 3, 5, 2, 4]
+        )  # [b, c, h, p, w, p] --> [b, c, p, p, h, w]
         x = x.reshape(bsz, self.patch_dim, self.seq_h, self.seq_w)  # --> [b, cxpxp, h, w]
         x = x.permute([0, 2, 3, 1]).reshape(bsz, self.seq_len, self.patch_dim)  # --> [b, hxw, cxpxp]
         return x
@@ -261,7 +264,9 @@ class AutoencoderKL(nn.Module):
     def unpatchify(self, x):
         bsz = x.shape[0]
         # unpatchify
-        x = x.reshape(bsz, self.seq_h, self.seq_w, self.patch_dim).permute([0, 3, 1, 2])  # [b, h, w, cxpxp] --> [b, cxpxp, h, w]
+        x = x.reshape(bsz, self.seq_h, self.seq_w, self.patch_dim).permute(
+            [0, 3, 1, 2]
+        )  # [b, h, w, cxpxp] --> [b, cxpxp, h, w]
         x = x.reshape(
             bsz,
             3,
@@ -269,7 +274,9 @@ class AutoencoderKL(nn.Module):
             self.patch_size,
             self.seq_h,
             self.seq_w,
-        ).permute([0, 1, 4, 2, 5, 3])  # [b, c, p, p, h, w] --> [b, c, h, p, w, p]
+        ).permute(
+            [0, 1, 4, 2, 5, 3]
+        )  # [b, c, p, p, h, w] --> [b, c, h, p, w, p]
         x = x.reshape(
             bsz,
             3,

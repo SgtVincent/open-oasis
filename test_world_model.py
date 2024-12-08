@@ -1,10 +1,11 @@
 import torch
 import os
-from world_model import WorldModel
 from PIL import Image
 from torchvision.io import read_image, read_video, write_png, write_video
-from utils import load_prompt
 from einops import rearrange
+
+from open_oasis.world_model import WorldModel
+from open_oasis.utils import load_prompt
 
 # Load example image/ video
 prompt_path = "sample_data/Player729-f153ac423f61-20210806-224813.chunk_000.mp4"
@@ -42,6 +43,7 @@ wm = WorldModel(
     n_prompt_frames=1,
     ddim_steps=10,
     fps=20,
+    device="cuda:3",
 )
 
 # # Generate video

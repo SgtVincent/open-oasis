@@ -4,17 +4,18 @@ References:
 """
 
 import torch
-from dit import DiT_models
-from vae import VAE_models
-from torchvision.io import read_video, write_video
-from utils import load_prompt, load_actions, sigmoid_beta_schedule
 from tqdm import tqdm
 from einops import rearrange
 from torch import autocast
+from torchvision.io import read_video, write_video
 from safetensors.torch import load_model
 import argparse
 from pprint import pprint
 import os
+
+from open_oasis.dit import DiT_models
+from open_oasis.vae import VAE_models
+from open_oasis.utils import load_prompt, load_actions, sigmoid_beta_schedule
 
 assert torch.cuda.is_available()
 device = "cuda:0"

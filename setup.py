@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 
 setup(
-    name="oasiis",
+    name="open_oasis",
     version="0.1.0",
     author="Your Name",
     author_email="your.email@example.com",
@@ -17,15 +17,14 @@ setup(
         "einops",
         "tqdm",
         "argparse",
-        "diffusers", 
+        "diffusers",
         "timm",
-        "av",
-        "camel-ai[all]",
+        "av==13.1.0",
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires='>=3.10',
+    python_requires=">=3.9",
 )

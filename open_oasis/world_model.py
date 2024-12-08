@@ -1,13 +1,15 @@
 import torch
 import os
-from dit import DiT_models
-from vae import VAE_models
 from torchvision.io import write_video
-from utils import sigmoid_beta_schedule, one_hot_actions
 from einops import rearrange
 from torch import autocast
 from safetensors.torch import load_model
 from tqdm import tqdm
+
+
+from .dit import DiT_models
+from .vae import VAE_models
+from .utils import sigmoid_beta_schedule, one_hot_actions
 
 
 class WorldModel:
@@ -32,6 +34,7 @@ class WorldModel:
         noise_abs_max=20,
         stabilization_level=15,
         seed=0,
+        device="cuda:0",
     ):
         """
         Initialize the WorldModel with specified parameters and load the models.
@@ -49,7 +52,7 @@ class WorldModel:
             stabilization_level (int, optional): Stabilization level for noise scheduling. Defaults to 15.
         """
         assert torch.cuda.is_available(), "CUDA is not available"
-        self.device = "cuda:0"
+        self.device = device
         self.num_frames = num_frames
         self.n_prompt_frames = n_prompt_frames
         self.ddim_steps = ddim_steps

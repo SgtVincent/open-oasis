@@ -4,14 +4,11 @@ Adapted from https://github.com/lucidrains/rotary-embedding-torch/blob/main/rota
 
 from __future__ import annotations
 from math import pi, log
-
 import torch
 from torch.nn import Module, ModuleList
 from torch.amp import autocast
 from torch import nn, einsum, broadcast_tensors, Tensor
-
 from einops import rearrange, repeat
-
 from typing import Literal
 
 # helper functions
@@ -54,7 +51,9 @@ def apply_rotary_emb(freqs, t, start_index=0, scale=1.0, seq_dim=-2):
     rot_dim = freqs.shape[-1]
     end_index = start_index + rot_dim
 
-    assert rot_dim <= t.shape[-1], f"feature dimension {t.shape[-1]} is not of sufficient size to rotate in all the positions {rot_dim}"
+    assert (
+        rot_dim <= t.shape[-1]
+    ), f"feature dimension {t.shape[-1]} is not of sufficient size to rotate in all the positions {rot_dim}"
 
     # Split t into three parts: left, middle (to be transformed), and right
     t_left = t[..., :start_index]
@@ -177,7 +176,9 @@ class RotaryEmbedding(Module):
     def rotate_queries_or_keys(self, t, freqs, seq_dim=None, offset=0, scale=None):
         seq_dim = default(seq_dim, self.default_seq_dim)
 
-        assert not self.use_xpos or exists(scale), "you must use `.rotate_queries_and_keys` method instead and pass in both queries and keys, for length extrapolatable rotary embeddings"
+        assert not self.use_xpos or exists(
+            scale
+        ), "you must use `.rotate_queries_and_keys` method instead and pass in both queries and keys, for length extrapolatable rotary embeddings"
 
         device, dtype, seq_len = t.device, t.dtype, t.shape[seq_dim]
 
@@ -287,7 +288,13 @@ class RotaryEmbedding(Module):
 
     @autocast("cuda", enabled=False)
     def forward(self, t: Tensor, freqs: Tensor, seq_len=None, offset=0):
-        should_cache = self.cache_if_possible and not self.learned_freq and exists(seq_len) and self.freqs_for != "pixel" and (offset + seq_len) <= self.cache_max_seq_len
+        should_cache = (
+            self.cache_if_possible
+            and not self.learned_freq
+            and exists(seq_len)
+            and self.freqs_for != "pixel"
+            and (offset + seq_len) <= self.cache_max_seq_len
+        )
 
         if should_cache and exists(self.cached_freqs) and (offset + seq_len) <= self.cached_freqs_seq_len.item():
             return self.cached_freqs[offset : (offset + seq_len)].detach()
